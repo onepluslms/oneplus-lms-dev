@@ -3704,7 +3704,7 @@ var DOCTOR_SYNC_KEY = 'doctor_last_sync'; // localStorage key — ISO timestamp
 function prewarmDoctorCache() {
   if (allDoctorsCache || doctorCacheLoading) return;
   doctorCacheLoading = true;
-  var base = '/oplus-lms/';
+  var base = '/oplus-lms-dev/';
   // Tier 1: load bundled doctors.json (cached by SW — works offline)
   fetch(base + 'doctors.json')
     .then(function(r) { return r.json(); })

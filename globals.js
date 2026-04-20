@@ -73,7 +73,7 @@ function onDataReady(fn) {
 
 function loadAppData() {
   if (_dataLoaded) return;
-  var base = '/oplus-lms/';
+  var base = '/oplus-lms-dev/';
   Promise.all([
     fetch(base + 'catalogue.json').then(function(r){ return r.json(); }),
     fetch(base + 'panels.json').then(function(r){ return r.json(); }),
@@ -144,7 +144,7 @@ db.enablePersistence({ synchronizeTabs: true })
 
 // Register service worker for app shell caching (offline load)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/oplus-lms/sw.js')
+  navigator.serviceWorker.register('/oplus-lms-dev/sw.js')
     .then(function(reg) {
       console.log('SW registered');
       // Check for updates when app becomes visible (user switches back)
