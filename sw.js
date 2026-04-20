@@ -1,60 +1,63 @@
-// sw.js — oPLUS LMS v20.03
-const CACHE = 'oplus-lms-v20.05';
-const ASSETS = [
-  '/oplus-lms-dev/',
-  '/oplus-lms-dev/index.html',
-  '/oplus-lms-dev/globals.js',
-  '/oplus-lms-dev/utils.js',
-  '/oplus-lms-dev/pa.js',
-  '/oplus-lms-dev/reports.js',
-  '/oplus-lms-dev/admin.js',
-  '/oplus-lms-dev/app.js',
-  '/oplus-lms-dev/manifest.json',
-  '/oplus-lms-dev/catalogue.json',
-  '/oplus-lms-dev/panels.json',
-  '/oplus-lms-dev/preanalytical.json',
-  '/oplus-lms-dev/doctors.json'
+// LabFlow Service Worker — v19.55
+const CACHE_NAME = 'labflow-v19.88';
+
+const PRECACHE = [
+  '/oneplus-lms/index.html',
+  '/oneplus-lms/manifest.json',
+  '/oneplus-lms/icon-192.png',
+  '/oneplus-lms/icon-512.png',
+  '/oneplus-lms/doctors.json',
 ];
 
-self.addEventListener('install', function(e) {
-  e.waitUntil(
-    caches.open(CACHE).then(function(cache) {
-      return cache.addAll(ASSETS.map(function(url) {
-        return new Request(url, { cache: 'reload' });
-      })).catch(function(err) {
-        console.warn('SW install partial:', err);
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      // Cache core files — doctors.json may not exist yet, don't fail if missing
+      return cache.addAll([
+        '/oneplus-lms/index.html',
+        '/oneplus-lms/manifest.json',
+        '/oneplus-lms/icon-192.png',
+        '/oneplus-lms/icon-512.png',
+      ]).then(() => {
+        // Cache doctors.json separately — optional, won't block install
+        return cache.add('/oneplus-lms/doctors.json').catch(() => {
+          console.log('SW: doctors.json not yet available — will cache on first fetch');
+        });
       });
-    })
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', function(e) {
-  e.waitUntil(
-    caches.keys().then(function(keys) {
-      return Promise.all(
-        keys.filter(function(k) { return k !== CACHE; })
-            .map(function(k) { return caches.delete(k); })
-      );
-    })
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', function(e) {
-  if (e.request.method !== 'GET') return;
-  var url = e.request.url;
-  if (url.includes('firebase') || url.includes('googleapis') || url.includes('gstatic')) return;
-  e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      var networkFetch = fetch(e.request).then(function(response) {
-        if (response && response.status === 200) {
-          var clone = response.clone();
-          caches.open(CACHE).then(function(cache) { cache.put(e.request, clone); });
-        }
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET') return;
+  if (url.hostname.includes('googleapis.com')) return;
+  if (url.hostname.includes('gstatic.com')) return;
+  if (url.hostname.includes('firebaseio.com')) return;
+
+  // Network first, fall back to cache
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
-      });
-      return cached || networkFetch;
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
+});
+
+// Listen for skip waiting message from app
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
