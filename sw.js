@@ -1,42 +1,56 @@
-// LabFlow Service Worker — v19.22
-const CACHE_NAME = 'labflow-v19.22';
-
-const PRECACHE = [
-  '/oneplus-lms/index.html',
-  '/oneplus-lms/manifest.json',
-  '/oneplus-lms/icon-192.png',
-  '/oneplus-lms/icon-512.png',
+// sw.js — oPLUS LMS v20.00
+const CACHE = 'oplus-lms-v20.00';
+const ASSETS = [
+  '/oplus-lms/',
+  '/oplus-lms/index.html',
+  '/oplus-lms/utils.js',
+  '/oplus-lms/manifest.json',
+  '/oplus-lms/catalogue.json',
+  '/oplus-lms/panels.json',
+  '/oplus-lms/preanalytical.json',
+  '/oplus-lms/doctors.json'
 ];
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+self.addEventListener('install', function(e) {
+  e.waitUntil(
+    caches.open(CACHE).then(function(cache) {
+      return cache.addAll(ASSETS.map(function(url) {
+        return new Request(url, { cache: 'reload' });
+      })).catch(function(err) {
+        console.warn('SW install cache partial:', err);
+      });
+    })
   );
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE; })
+            .map(function(k) { return caches.delete(k); })
+      );
+    })
   );
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (event.request.method !== 'GET') return;
-  if (url.hostname.includes('googleapis.com')) return;
-  if (url.hostname.includes('gstatic.com')) return;
-  if (url.hostname.includes('firebaseio.com')) return;
-
-  // Network first, fall back to cache
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+self.addEventListener('fetch', function(e) {
+  if (e.request.method !== 'GET') return;
+  var url = e.request.url;
+  // Firebase, APIs — always network
+  if (url.includes('firebase') || url.includes('googleapis') || url.includes('gstatic')) return;
+  e.respondWith(
+    caches.match(e.request).then(function(cached) {
+      var networkFetch = fetch(e.request).then(function(response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE).then(function(cache) { cache.put(e.request, clone); });
+        }
         return response;
-      })
-      .catch(() => caches.match(event.request))
+      });
+      return cached || networkFetch;
+    })
   );
 });
