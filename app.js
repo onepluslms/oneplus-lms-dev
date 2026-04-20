@@ -421,7 +421,6 @@ function startFieldDashWidget() {
     }, function() { /* silent — widget is non-critical */ });
 }
 
-window.addEventListener('load', function() {
 
 auth.onAuthStateChanged(function(user) {
   clearTimeout(loadTO);
@@ -460,5 +459,3 @@ auth.onAuthStateChanged(function(user) {
     });
   });
 });
-
-}); // end load
