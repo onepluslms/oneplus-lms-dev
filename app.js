@@ -88,7 +88,6 @@ auth.onAuthStateChanged(function(user) {
     var _lb2 = document.getElementById('login-btn');
     if (_lb2) { _lb2.disabled=false; _lb2.textContent='Sign In'; }
     goTo('s-auth', false); stack = ['s-auth'];
-    checkFirstTimeSetup();
     return;
   }
   curUser = user;
@@ -144,62 +143,6 @@ function setRole(r) {
   });
 }
 
-
-// ── FIRST-TIME SETUP ─────────────────────────────────────────────────────────
-function checkFirstTimeSetup() {
-  try {
-    db.collection('staff').limit(1).get().then(function(snap) {
-      try {
-        if (snap.empty) {
-          var fl = document.getElementById('form-login');
-          var fs = document.getElementById('form-setup');
-          var fp = document.getElementById('forgot-link');
-          if (fl) fl.style.display = 'none';
-          if (fs) fs.style.display = 'block';
-          if (fp) fp.style.display = 'none';
-        }
-      } catch(e2) {}
-    }).catch(function() {}); // rules may block unauthenticated read — silently show login
-  } catch(e) {}
-}
-
-async function doSetup() {
-  var name  = (document.getElementById('setup-name').value || '').trim();
-  var email = (document.getElementById('setup-email').value || '').trim();
-  var pass  = (document.getElementById('setup-pass').value || '');
-  var pin   = (document.getElementById('setup-pin').value || '').trim();
-  var err   = document.getElementById('setup-err');
-  var btn   = document.getElementById('setup-btn');
-
-  if (!name)              { err.textContent = 'Enter your name'; return; }
-  if (!email)             { err.textContent = 'Enter email'; return; }
-  if (pass.length < 6)    { err.textContent = 'Password must be at least 6 characters'; return; }
-  if (!/^\d{4}$/.test(pin)) { err.textContent = 'PIN must be exactly 4 digits'; return; }
-
-  btn.disabled = true; btn.textContent = 'Creating...';
-  err.textContent = '';
-
-  try {
-    var cred = await auth.createUserWithEmailAndPassword(email, pass);
-    var uid = cred.user.uid;
-    var hashedPin = await hashPin(pin);
-    await db.collection('staff').doc(uid).set({
-      name: name,
-      email: email,
-      role: 'admin',
-      pin: hashedPin,
-      active: true,
-      dashboardAccess: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    // Sign in automatically
-    err.textContent = '';
-    btn.textContent = 'Account created!';
-  } catch(e) {
-    err.textContent = e.message || 'Setup failed';
-    btn.disabled = false; btn.textContent = 'Create Admin Account';
-  }
-}
 
 function doLogin() {
   var email = document.getElementById('a-email').value.trim();
