@@ -1,0 +1,33 @@
+name: Deploy — Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble prod files
+        run: |
+          mkdir -p deploy
+          cp index.html deploy/index.html
+          cp sw.js deploy/sw.js
+          cp manifest.json deploy/manifest.json
+          cp dashboard.html deploy/dashboard.html
+          cp catalogue.json deploy/catalogue.json
+          cp panels.json deploy/panels.json
+          cp preanalytical.json deploy/preanalytical.json
+          cp doctors.json deploy/doctors.json
+          cp icon-192.png deploy/icon-192.png
+          cp icon-512.png deploy/icon-512.png
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy
+          keep_files: false
